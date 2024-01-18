@@ -10,13 +10,13 @@ import {
   userProfilesToOrgs,
   orgMembers
 } from '@uninbox/database/schema';
-import { nanoId, nanoIdLength } from '@uninbox/utils';
+import { nanoId, nanoIdLength, nanoIdSchema } from '@uninbox/utils';
 import { TRPCError } from '@trpc/server';
 
 export const profileRouter = router({
   generateAvatarUploadUrl: userProcedure.query(async ({ ctx, input }) => {
     const { user } = ctx;
-    const userId = user?.id || 0;
+    const userId = user.id;
     const config = useRuntimeConfig();
 
     const formData = new FormData();
@@ -79,7 +79,7 @@ export const profileRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { db, user } = ctx;
-      const userId = user?.id || 0;
+      const userId = user.id;
 
       const newPublicId = nanoId();
       const insertUserProfileResponse = await db.insert(userProfiles).values({
@@ -111,14 +111,14 @@ export const profileRouter = router({
     .input(
       z
         .object({
-          orgPublicId: z.string().min(3).max(nanoIdLength).optional(),
+          orgPublicId: nanoIdSchema.optional(),
           orgSlug: z.string().min(1).max(32).optional()
         })
         .strict()
     )
     .query(async ({ ctx, input }) => {
       const { db, user } = ctx;
-      const userId = user?.id || 0;
+      const userId = user.id;
 
       let orgId: number | null = null;
       if (input.orgPublicId || input.orgSlug) {
@@ -179,7 +179,7 @@ export const profileRouter = router({
   updateUserProfile: userProcedure
     .input(
       z.object({
-        profilePublicId: z.string().min(3).max(nanoIdLength),
+        profilePublicId: nanoIdSchema,
         fName: z.string(),
         lName: z.string(),
         title: z.string(),
@@ -191,7 +191,7 @@ export const profileRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { db, user } = ctx;
-      const userId = user?.id || 0;
+      const userId = user.id;
 
       await db
         .update(userProfiles)
