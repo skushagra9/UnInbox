@@ -70,11 +70,10 @@
 
   const { $trpc } = useNuxtApp();
 
-  const { data: userProfile } =
-    await $trpc.user.profile.getUserOrgProfile.useQuery(
-      { orgSlug: orgSlug },
-      { server: false, queryKey: 'getUserSingleProfileNav' }
-    );
+  const { data: userProfile } = $trpc.user.profile.getUserOrgProfile.useQuery(
+    { orgSlug: orgSlug },
+    { server: false, queryKey: 'getUserSingleProfileNav', lazy: true }
+  );
 
   const {
     data: userOrgs,
@@ -91,19 +90,13 @@
     const userOrgSlugs = newUserOrgs?.userOrgs.map(
       (userOrg) => userOrg.org.slug
     );
-    const userPersonalOrgSlug = newUserOrgs?.personalOrgs?.map(
-      (userOrg) => userOrg.org.slug
-    );
     if (newUserOrgs?.adminOrgSlugs?.includes(orgSlug)) {
       isUserAdminOfActiveOrg.value = true;
     } else {
       isUserAdminOfActiveOrg.value = false;
     }
 
-    if (
-      !userOrgSlugs?.includes(orgSlug) &&
-      !userPersonalOrgSlug?.includes(orgSlug)
-    ) {
+    if (!userOrgSlugs?.includes(orgSlug)) {
       navigateTo(`/login`);
     }
   });
@@ -146,11 +139,11 @@
   const userMenuItems = computed(() => [
     [
       {
-        publicId: userProfile?.value?.profile?.publicId || '',
+        publicId: userProfile.value?.profile?.publicId || '',
         label:
-          userProfile?.value?.profile?.firstName +
+          userProfile.value?.profile?.firstName +
           ' ' +
-          userProfile?.value?.profile?.lastName,
+          userProfile.value?.profile?.lastName,
         slot: 'account'
       }
     ],
@@ -227,15 +220,19 @@
   const closeModal = () => {
     showLogoutModal.value = false;
   };
+
   async function useLogout() {
+    const toast = useToast();
     if (process.server) {
       return null;
     }
-    // useHanko()?.session._cookie.removeAuthCookie();
-    await useFetch('/api/logout', {
-      method: 'POST'
+    await useAuth().signOut();
+    toast.add({
+      title: 'Logged out',
+      description: 'You have been logged out',
+      color: 'green',
+      timeout: 5000
     });
-    navigateTo('/');
   }
 </script>
 <template>
@@ -247,17 +244,15 @@
       </template>
       <div class="w-full flex flex-col gap-8">
         <p>Are you sure you want to logout?</p>
-        <div class="flex flex-row gap-4">
+        <div class="w-full flex flex-row justify-end gap-4">
           <UnUiButton
             label="Cancel"
             size="xl"
-            block
             @click="closeModal" />
           <UnUiButton
             label="Logout"
             size="xl"
             color="red"
-            block
             @click="useLogout()" />
         </div>
       </div>

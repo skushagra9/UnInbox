@@ -103,11 +103,12 @@
     });
     const emailIdentityPublicId = emailIdentityPublicIdToEdit.value;
     const sendName = editedSendName.value;
-    const editResponse = await $trpc.user.addresses.editSendName.mutate({
+    const editSendNameTrpc = $trpc.user.addresses.editSendName.useMutation();
+    await editSendNameTrpc.mutate({
       emailIdentityPublicId: emailIdentityPublicId,
       newSendName: sendName
     });
-    if (!editResponse.success) {
+    if (editSendNameTrpc.status.value === 'error') {
       toast.remove('editing_send_name');
       toast.add({
         id: 'send_name_edit_fail',
@@ -168,10 +169,23 @@
     if (isInPremiumAvailableArray && !isPro.value) {
       return;
     }
-    const claimResponse =
-      await $trpc.user.addresses.claimPersonalAddress.mutate({
-        emailIdentity: emailIdentity
+    const claimPersonalAddressTrpc =
+      $trpc.user.addresses.claimPersonalAddress.useMutation();
+    await claimPersonalAddressTrpc.mutate({
+      emailIdentity: emailIdentity
+    });
+    if (claimPersonalAddressTrpc.status.value === 'error') {
+      toast.remove('claiming_email');
+      toast.add({
+        id: 'claim_email_fail',
+        title: 'Failed to claim email',
+        description: `${emailIdentity} could not be claimed. Refresh the page and try again.`,
+        color: 'red',
+        icon: 'i-ph-warning-circle',
+        timeout: 5000
       });
+      return;
+    }
     toast.remove('claiming_email');
     refreshUserAddresses();
     toast.add({
@@ -382,16 +396,7 @@
             :loading="pending"
             class="w-full overflow-x-scroll">
             <template #address-data="{ row }">
-              <UnUiTooltip text="Copy to clipboard">
-                <button
-                  class="flex flex-row cursor-pointer items-center gap-2"
-                  @click="copy(row.address)">
-                  <span class="truncate">{{ row.address }}</span>
-                  <UnUiIcon
-                    name="i-ph-clipboard"
-                    size="20" />
-                </button>
-              </UnUiTooltip>
+              <UnUiCopy :text="row.address" />
             </template>
             <template #sendName-data="{ row }">
               <UnUiTooltip text="Click to edit">
@@ -406,19 +411,7 @@
               </UnUiTooltip>
             </template>
             <template #forwarding-data="{ row }">
-              <UnUiTooltip
-                :text="`${row.forwarding.address} - Copy to clipboard`">
-                <button
-                  class="flex flex-row cursor-pointer items-center gap-2"
-                  @click="copy(row.address)">
-                  <span class="uppercase">
-                    {{ row.forwarding.truncated }}...
-                  </span>
-                  <UnUiIcon
-                    name="i-ph-clipboard"
-                    size="20" />
-                </button>
-              </UnUiTooltip>
+              <UnUiCopy :text="row.forwarding.address" />
             </template>
             <template #org-data="{ row }">
               <div class="flex flex-row items-center gap-2">

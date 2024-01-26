@@ -78,26 +78,50 @@
       return true;
   });
 
+  const toast = useToast();
   //functions
   async function createNewOrg() {
     newButtonLoading.value = true;
 
     newButtonLabel.value = 'Creating your organization';
-    const createNewOrgResponse = await $trpc.org.crud.createNewOrg.mutate({
+    toast.add({
+      id: 'creating_org',
+      title: 'Creating your organization',
+      description: `This may take a few seconds`,
+      icon: 'i-ph-clock-clockwise',
+      timeout: 20000
+    });
+    const createNewOrgTrpc = $trpc.org.crud.createNewOrg.useMutation();
+    await createNewOrgTrpc.mutate({
       orgName: orgNameValue.value,
       orgSlug: orgSlugValue.value
     });
-    if (!createNewOrgResponse.success) {
+    if (createNewOrgTrpc.status.value === 'error') {
       newButtonLoading.value = false;
-      pageError.value = true;
-      newButtonLabel.value = 'Something went wrong!';
+      newButtonLabel.value = 'Make my organization';
+      toast.add({
+        id: 'create_new_org_fail',
+        title: 'Could not create organization',
+        description: `Check the errors and try again.`,
+        color: 'red',
+        icon: 'i-ph-warning-circle',
+        timeout: 5000
+      });
+      return;
     }
 
     const orgSlugCookie = useCookie('un-join-org-slug', {
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     });
     orgSlugCookie.value = orgSlugValue.value as string;
-    newButtonLabel.value = 'Creating a @uninbox email';
+    toast.remove('creating_org');
+    toast.add({
+      id: 'created_org',
+      title: 'Organization created',
+      description: `🎉`,
+      icon: 'i-ph-check',
+      timeout: 5000
+    });
     newButtonLoading.value = false;
     newButtonLabel.value = 'All Done!';
     navigateTo('/join/profile');
@@ -105,18 +129,34 @@
   async function joinOrg() {
     joinButtonLoading.value = true;
     joinButtonLabel.value = 'Joining the organization';
-    const joinOrgResponse = await $trpc.org.users.invites.redeemInvite.mutate({
+    const redeemInviteTrpc = $trpc.org.users.invites.redeemInvite.useMutation();
+    const joinOrgResponse = await redeemInviteTrpc.mutate({
       inviteToken: inviteCodeValue.value
     });
+    if (redeemInviteTrpc.status.value === 'error') {
+      joinButtonLoading.value = false;
+      joinButtonLabel.value = 'Join my team';
+      toast.add({
+        id: 'redeem_invite_fail',
+        title: 'Could not join organization',
+        description: `Check the errors and try again.`,
+        color: 'red',
+        icon: 'i-ph-warning-circle',
+        timeout: 5000
+      });
+      return;
+    }
     const orgSlugCookie = useCookie('un-join-org-slug', {
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     });
-    orgSlugCookie.value = joinOrgResponse.orgSlug as string;
-    if (!joinOrgResponse.success) {
-      joinButtonLoading.value = false;
-      pageError.value = true;
-      joinButtonLabel.value = 'Something went wrong!';
-    }
+    orgSlugCookie.value = joinOrgResponse!.orgSlug as string;
+    toast.add({
+      id: 'joined_org',
+      title: 'Organization joined',
+      description: `🎉`,
+      icon: 'i-ph-check',
+      timeout: 5000
+    });
     joinButtonLoading.value = false;
     joinButtonLabel.value = 'All Done!';
     navigateTo('/join/profile');
